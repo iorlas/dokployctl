@@ -62,13 +62,7 @@ def show_problem_logs(base_url: str, token: str, containers: list[dict], app_nam
         c
         for c in sorted(
             containers,
-            key=lambda c: (
-                0
-                if c.get("state") in ("exited", "dead", "created")
-                else 1
-                if "(unhealthy)" in c.get("status", "")
-                else 2
-            ),
+            key=lambda c: 0 if c.get("state") in ("exited", "dead", "created") else 1 if "(unhealthy)" in c.get("status", "") else 2,
         )
         if not _container_ok(c) and not _is_one_shot(c)
     ]

@@ -36,7 +36,7 @@ def _fetch_ws(url: str, token: str, recv_timeout: float = 5.0) -> list[str]:
                         break
                     except websockets.exceptions.ConnectionClosed:
                         break
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             _err(f"warning: WebSocket error: {e}")
         return lines
 

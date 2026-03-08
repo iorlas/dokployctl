@@ -16,7 +16,7 @@ class DokployID(click.ParamType):
 
     name = "id"
 
-    def convert(self, value: str, param: click.Parameter | None, ctx: click.Context | None) -> str:
+    def convert(self, value: str, param: click.Parameter | None, ctx: click.Context | None) -> str:  # noqa: ARG002
         return value
 
 
@@ -76,7 +76,7 @@ def print_response(resp: httpx.Response) -> None:
     """Print response JSON. Exit 1 on HTTP error."""
     try:
         click.echo(json.dumps(resp.json(), indent=2))
-    except Exception:
+    except Exception:  # noqa: BLE001
         click.echo(resp.text)
     if resp.is_error:
         _err(f"\nerror: HTTP {resp.status_code}")

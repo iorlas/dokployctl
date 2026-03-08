@@ -24,13 +24,133 @@ packages = ["src/dokployctl"]
 
 [tool.ruff]
 target-version = "py312"
-line-length = 120
+line-length = 140
+output-format = "concise"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP", "B", "SIM", "C4", "PIE", "RET", "RUF"]
+select = [
+    # ── PREVENT: hard errors, no ambiguity ──
+    "F",         # pyflakes — undefined names, unused imports
+    "S",         # flake8-bandit — security: hardcoded passwords, SQL injection, exec()
+    "T10",       # flake8-debugger — leftover pdb/breakpoint()
+    "T20",       # flake8-print — leftover print() debug statements
+    "BLE",       # flake8-blind-except — bare except: hides all errors
+    "PGH",       # pygrep-hooks — blanket type: ignore, eval(), blanket noqa
+
+    # ── ENFORCE: deterministic style, auto-fixable ──
+    "E", "W",    # pycodestyle — basic style errors and warnings
+    "I",         # isort — import sorting
+    "N",         # pep8-naming — naming conventions
+    "UP",        # pyupgrade — upgrade to modern Python syntax
+    "C4",        # flake8-comprehensions — unnecessary list()/dict()/set() wrappers
+    "PIE",       # flake8-pie — unnecessary code patterns
+    "TC",        # flake8-type-checking — move type-only imports behind TYPE_CHECKING
+    "PTH",       # flake8-use-pathlib — os.path → pathlib
+    "FURB",      # refurb — modernization
+    "RUF",       # ruff-specific — additional quality rules
+
+    # ── DETECT: flags potential problems ──
+    "B",         # flake8-bugbear — likely bugs
+    "A",         # flake8-builtins — shadowing builtins
+    "DTZ",       # flake8-datetimez — naive datetime
+    "ISC",       # flake8-implicit-str-concat — accidental string concatenation
+    "RET",       # flake8-return — unnecessary return/else/elif after return
+    "SIM",       # flake8-simplify — simplifiable code patterns
+    "ARG",       # flake8-unused-arguments — unused function arguments
+    "PERF",      # perflint — performance anti-patterns
+    "LOG",       # flake8-logging — logging anti-patterns
+    "G",         # flake8-logging-format — f-strings in log messages
+    "SLF",       # flake8-self — private member access from outside class
+    "TID",       # flake8-tidy-imports — banned imports, relative imports
+    "PL",        # pylint subset — complexity, design, conventions
+
+    # ── STRUCTURE: clean architecture enforcement ──
+    "C90",       # mccabe — cyclomatic complexity limit
+    "EM",        # flake8-errmsg — string literals in exceptions
+    "FBT",       # flake8-boolean-trap — boolean positional arguments
+    "PT",        # flake8-pytest-style — pytest best practices
+]
+ignore = [
+    # Readability — agent rewrites hurt more than they help
+    "SIM108",    # ternary — often hurts readability
+    "SIM110",    # any() rewrite — comprehension often clearer
+    "RUF001",    # ambiguous unicode — intentional Cyrillic/emoji usage
+    "RUF015",    # next(iter()) vs [0]
+
+    # Too strict — valid patterns flagged
+    "EM101",     # string literal in exception
+    "EM102",     # f-string in exception
+    "FBT001",    # boolean positional arg def
+    "FBT002",    # boolean default value
+    "PLR0913",   # too many arguments
+    "PLR2004",   # magic value comparison
+    "ARG001",    # unused function argument — fixtures, callbacks
+    # Agent-hostile — causes harmful refactoring
+    "A003",      # class attribute shadows builtin
+    "PT001",     # @pytest.fixture() vs @pytest.fixture
+    "PT023",     # @pytest.mark.unit() vs @pytest.mark.unit
+    "PERF203",   # try/except in loop
+    "RET504",    # unnecessary assignment before return
+    "PLW2901",   # loop variable overwritten
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pylint]
+max-args = 8
+max-statements = 50
+max-branches = 10
+max-returns = 6
+
+[tool.ruff.lint.per-file-ignores]
+"src/dokployctl/deploy.py" = [
+    "C901",      # complexity — existing deploy logic, refactor separately
+    "PLR0912",   # too many branches — same
+    "PLR0915",   # too many statements — same
+]
+"src/dokployctl/logs.py" = [
+    "C901",      # complexity — existing log logic, refactor separately
+    "PLR0911",   # too many returns — same
+    "PLR0912",   # too many branches — same
+]
+"tests/**" = [
+    "S101",      # assert — standard in tests
+    "S105",      # hardcoded passwords in variable names — test fixtures
+    "S106",      # hardcoded passwords — test fixtures use fake creds
+    "E402",      # import order — tests set env vars before imports
+    "ARG001",    # unused arguments — pytest fixtures
+    "PLR2004",   # magic values — test assertions use literal values
+    "SLF001",    # private member access — testing internals is valid
+    "PT011",     # pytest.raises too broad
+    "PLR0915",   # too many statements — long test scenarios
+    "PLC0415",   # import not at top level — tests import after env setup
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-v --strict-markers --cov --cov-report=term:skip-covered --cov-report=xml --cov-fail-under=25"
+
+[tool.coverage.run]
+source = ["src/dokployctl"]
+branch = true
+omit = ["src/dokployctl/cli.py"]
+
+[tool.coverage.report]
+show_missing = false
+skip_covered = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "\\.\\.\\.",
+]
 
 [dependency-groups]
-dev = ["pytest>=8", "ruff>=0.9"]
+dev = [
+    "pytest>=8",
+    "pytest-cov>=6",
+    "diff-cover>=9",
+    "ruff>=0.9",
+]
