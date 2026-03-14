@@ -85,9 +85,10 @@ dokployctl deploy <compose-id> <compose-file> [--env] [--env-file FILE] [--timeo
 
 **Breaking change:** env resolution is now opt-in, not default.
 
-- **Default (no flags):** sync compose file → deploy → poll → health-check. Dokploy uses whatever env is already stored.
-- **`--env`:** scan compose for `${VAR}`, resolve all from `os.environ`, push to Dokploy alongside compose file. This is the CI mode.
+- **Default (no flags):** sync compose file → deploy → poll → health-check. Dokploy uses whatever env is already stored. If the compose file contains `${VAR}` refs, they are pushed as-is — Dokploy resolves them from its stored env.
+- **`--env`:** scan compose for `${VAR}`, resolve all from `os.environ`, push to Dokploy alongside compose file. This is the CI mode. Exits with error if any referenced var is missing from the environment.
 - **`--env-file FILE`:** read env from file instead of environment variables.
+- **`--env` + `--env-file`:** error — mutually exclusive.
 
 **Auto-escalation on failure:**
 
@@ -253,11 +254,57 @@ Instead of showing usage/help text, lists all compose apps (same as `dokployctl 
 ## Removed
 
 - `--live` flag on `status` (always shows live containers)
-- `sync` as a separate command (folded into `deploy`; use `deploy --dry-run` if we need sync-only later)
 
-Wait — removing `sync` is a question. `sync` updates the compose file + env in Dokploy without deploying. CI workflows sometimes sync first and deploy separately. Keep `sync` or fold it into deploy?
+**`sync` is kept.** It updates compose file + env in Dokploy without deploying. Same `--env` / `--env-file` flag pattern as `deploy`.
 
-**Decision: keep `sync`.** It's a real use case (update config without deploying). Apply the same `--env` flag pattern: `sync <id> <file>` pushes just the file, `sync <id> <file> --env` also resolves env vars.
+```
+dokployctl sync <compose-id> <compose-file> [--env] [--env-file FILE]
+```
+
+```
+[00:00] Syncing compose file (2,847 chars)...
+[00:01] Synced. 2,847 chars persisted, sourceType=raw.
+[00:01] Done (1s total).
+```
+
+With `--env`:
+```
+[00:00] Resolving env: 5 vars from compose (IMAGE_TAG, DB_PASSWORD, ...)
+[00:00] Syncing compose file (2,847 chars) + env (5 vars)...
+[00:01] Synced. 2,847 chars persisted, 5 env vars persisted.
+[00:01] Done (1s total).
+```
+
+---
+
+## API Endpoints Reference
+
+| Command | Dokploy API endpoints used |
+|---|---|
+| `deploy` | `compose.update`, `deployment.allByCompose`, `compose.deploy`, `compose.one`, `docker.getContainers` + WebSocket (deploy log, container logs) |
+| `sync` | `compose.update` |
+| `status` | `compose.one`, `docker.getContainers` |
+| `find` | `project.all` (returns all projects with nested compose apps) |
+| `stop` | `compose.stop` |
+| `start` | `compose.start`, `compose.one`, `docker.getContainers` |
+| `logs` | `compose.one`, `docker.getContainers` + WebSocket (container logs or deploy log) |
+| `init` | `compose.create`, `compose.update` |
+| `api` | any (passthrough) |
+
+Note: `docker.getContainers` returns `name`, `state`, `status`, `containerId`, `image`, `ports`. The `status` field contains uptime info (e.g., "Up 2 hours (healthy)"). Image and uptime are available from this endpoint.
+
+## Exit Codes
+
+| Code | Meaning |
+|---|---|
+| 0 | Success — all operations completed, containers healthy |
+| 1 | Failure — deploy failed, containers unhealthy, timeout, API error, missing config |
+
+All commands use the same two exit codes. CI and agents rely on exit code to determine success/failure.
+
+## Polling
+
+Deploy and health-check polling use 5-second intervals. Default deploy timeout: 300s (60 polls). Default health timeout: 120s (24 polls). Both configurable via `--timeout`.
 
 ---
 
