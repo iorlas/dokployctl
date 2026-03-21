@@ -4,6 +4,7 @@ import click
 
 from dokployctl.client import DOKPLOY_ID, api_call, load_config, make_client, print_response
 from dokployctl.containers import get_containers
+from dokployctl.timer import Timer
 from dokployctl.websocket import fetch_container_logs, fetch_deploy_log
 
 
@@ -11,10 +12,12 @@ from dokployctl.websocket import fetch_container_logs, fetch_deploy_log
 @click.argument("compose_id", type=DOKPLOY_ID)
 @click.option("--service", "-s", default=None, help="Filter to a specific service name")
 @click.option("--tail", "-n", default=100, help="Number of lines (default: 100)")
-@click.option("--since", default="all", help="Time filter: 30s, 5m, 1h, all (default: all)")
+@click.option("--since", default="5m", help="Time filter: 30s, 5m, 1h, all (default: 5m)")
 @click.option("--deploy", "-D", "show_deploy", is_flag=True, help="Show deploy build log instead")
 def logs(compose_id: str, service: str | None, tail: int, since: str, show_deploy: bool) -> None:
     """Show container runtime logs (or deploy build log with -D)."""
+    timer = Timer()
+    timer.log(f"Fetching logs for {compose_id} (last {since}, tail {tail})...")
     url, token = load_config()
     client = make_client(url, token)
 
@@ -70,8 +73,9 @@ def logs(compose_id: str, service: str | None, tail: int, since: str, show_deplo
         short = c.get("name", "?").replace(f"{app_name}-", "").rstrip("-1234567890")
         fetched = fetch_container_logs(url, token, cid, tail=tail, since=since)
         if len(containers) > 1:
-            click.echo(f"--- {short} ---")
+            click.echo(f"--- {short} (container: {cid}) ---")
         for line in fetched:
             click.echo(line.rstrip())
         if len(containers) > 1:
             click.echo()
+    timer.summary("Done.")
