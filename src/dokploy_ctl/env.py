@@ -22,7 +22,7 @@ def build_env_from_compose(compose_content: str) -> str:
         click.echo("error: Missing environment variables referenced in compose file:", err=True)
         for v in missing:
             click.echo(f"  ${{{v}}}", err=True)
-        click.echo("\nSet them in the environment before running dokployctl.", err=True)
+        click.echo("\nSet them in the environment before running dokploy-ctl.", err=True)
         sys.exit(1)
 
     lines = [f"{v}={os.environ[v]}" for v in var_names]

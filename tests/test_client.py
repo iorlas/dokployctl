@@ -1,4 +1,4 @@
-from dokployctl.client import load_config, make_client
+from dokploy_ctl.client import load_config, make_client
 
 
 def test_load_config_success(config_dir):

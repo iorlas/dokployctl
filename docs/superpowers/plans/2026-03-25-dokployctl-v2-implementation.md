@@ -1,21 +1,21 @@
-# dokployctl v2 Implementation Plan
+# dokploy-ctl v2 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Transform dokployctl into an AI-native CLI with LDD output, auto-escalation on failure, deterministic hints, and new discovery/lifecycle commands.
+**Goal:** Transform dokploy-ctl into an AI-native CLI with LDD output, auto-escalation on failure, deterministic hints, and new discovery/lifecycle commands.
 
 **Architecture:** Infrastructure modules first (timer, output, hints), then modify existing commands to use them, then add new commands (find, stop, start). Each task produces working, testable code. The env resolution change (`--env` opt-in) is applied to deploy and sync together.
 
 **Tech Stack:** Python 3.12+, click, httpx, websockets, pytest, ruff
 
-**Spec:** `docs/superpowers/specs/2026-03-25-dokployctl-v2-ai-native-design.md`
+**Spec:** `docs/superpowers/specs/2026-03-25-dokploy-ctl-v2-ai-native-design.md`
 
 ---
 
 ## File Structure
 
 ```
-src/dokployctl/
+src/dokploy-ctl/
 ├── __init__.py         # Version bump 0.1.0 → 0.2.0
 ├── cli.py              # MODIFY: add find/stop/start, bare invocation → find
 ├── client.py           # UNCHANGED
@@ -49,7 +49,7 @@ tests/
 ### Task 1: Timer module
 
 **Files:**
-- Create: `src/dokployctl/timer.py`
+- Create: `src/dokploy-ctl/timer.py`
 - Create: `tests/test_timer.py`
 
 - [ ] **Step 1: Write failing tests**
@@ -57,7 +57,7 @@ tests/
 ```python
 # tests/test_timer.py
 import time
-from dokployctl.timer import Timer
+from dokploy-ctl.timer import Timer
 
 def test_timer_starts_at_zero():
     t = Timer()
@@ -75,7 +75,7 @@ def test_timer_stamp_message():
 
 - [ ] **Step 2: Run tests, verify fail**
 
-Run: `cd /Users/iorlas/Workspaces/dokployctl && uv run pytest tests/test_timer.py -v`
+Run: `cd /Users/iorlas/Workspaces/dokploy-ctl && uv run pytest tests/test_timer.py -v`
 
 - [ ] **Step 3: Implement timer.py**
 
@@ -110,11 +110,11 @@ class Timer:
 ```
 
 - [ ] **Step 4: Run tests, verify pass**
-- [ ] **Step 5: Run lint:** `uv run ruff check src/dokployctl/timer.py tests/test_timer.py`
+- [ ] **Step 5: Run lint:** `uv run ruff check src/dokploy-ctl/timer.py tests/test_timer.py`
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/dokployctl/timer.py tests/test_timer.py
+git add src/dokploy-ctl/timer.py tests/test_timer.py
 git commit -m "feat: timer module — timestamped output for LDD"
 ```
 
@@ -123,28 +123,28 @@ git commit -m "feat: timer module — timestamped output for LDD"
 ### Task 2: Hints module
 
 **Files:**
-- Create: `src/dokployctl/hints.py`
+- Create: `src/dokploy-ctl/hints.py`
 - Create: `tests/test_hints.py`
 
 - [ ] **Step 1: Write failing tests**
 
 ```python
 # tests/test_hints.py
-from dokployctl.hints import hint_unhealthy, hint_deploy_failed, hint_restart
+from dokploy-ctl.hints import hint_unhealthy, hint_deploy_failed, hint_restart
 
 def test_hint_unhealthy_includes_compose_id():
     h = hint_unhealthy("IWcY", "worker")
     assert "IWcY" in h
     assert "worker" in h
-    assert "dokployctl logs" in h
+    assert "dokploy-ctl logs" in h
 
 def test_hint_deploy_failed_includes_log_command():
     h = hint_deploy_failed("IWcY", "worker", "exited(1)")
-    assert "dokployctl logs IWcY --service worker" in h
+    assert "dokploy-ctl logs IWcY --service worker" in h
 
 def test_hint_restart():
     h = hint_restart("IWcY")
-    assert "dokployctl start IWcY" in h
+    assert "dokploy-ctl start IWcY" in h
 ```
 
 - [ ] **Step 2: Run tests, verify fail**
@@ -157,30 +157,30 @@ def test_hint_restart():
 def hint_unhealthy(compose_id: str, service: str) -> str:
     return (
         f"Hint: {service} is unhealthy.\n"
-        f"  dokployctl logs {compose_id} --service {service} --since 5m"
+        f"  dokploy-ctl logs {compose_id} --service {service} --since 5m"
     )
 
 
 def hint_deploy_failed(compose_id: str, service: str, reason: str) -> str:
     return (
         f"Hint: {service} failed ({reason}). Check the Dockerfile entrypoint or config.\n"
-        f"  dokployctl logs {compose_id} --service {service} --tail 200\n"
-        f"  dokployctl status {compose_id}"
+        f"  dokploy-ctl logs {compose_id} --service {service} --tail 200\n"
+        f"  dokploy-ctl status {compose_id}"
     )
 
 
 def hint_restart(compose_id: str) -> str:
-    return f"Hint: To restart: dokployctl start {compose_id}"
+    return f"Hint: To restart: dokploy-ctl start {compose_id}"
 
 
 def hint_stopped(compose_id: str) -> str:
-    return f"Hint: To start: dokployctl start {compose_id}"
+    return f"Hint: To start: dokploy-ctl start {compose_id}"
 
 
 def hint_no_containers(compose_id: str) -> str:
     return (
         f"Hint: No containers found. The app may be stopped.\n"
-        f"  dokployctl start {compose_id}"
+        f"  dokploy-ctl start {compose_id}"
     )
 ```
 
@@ -188,7 +188,7 @@ def hint_no_containers(compose_id: str) -> str:
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/dokployctl/hints.py tests/test_hints.py
+git add src/dokploy-ctl/hints.py tests/test_hints.py
 git commit -m "feat: hints module — deterministic actionable suggestions"
 ```
 
@@ -197,14 +197,14 @@ git commit -m "feat: hints module — deterministic actionable suggestions"
 ### Task 3: Output formatting module
 
 **Files:**
-- Create: `src/dokployctl/output.py`
+- Create: `src/dokploy-ctl/output.py`
 - Create: `tests/test_output.py`
 
 - [ ] **Step 1: Write failing tests**
 
 ```python
 # tests/test_output.py
-from dokployctl.output import format_container_row, format_container_table
+from dokploy-ctl.output import format_container_row, format_container_table
 
 def test_format_container_row():
     c = {"name": "app-worker-1", "state": "running", "status": "Up 2h (healthy)", "containerId": "abc123", "image": "ghcr.io/iorlas/app:main-abc"}
@@ -233,7 +233,7 @@ Formatting helpers for container tables, service references, and summary lines. 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/dokployctl/output.py tests/test_output.py
+git add src/dokploy-ctl/output.py tests/test_output.py
 git commit -m "feat: output module — container table formatting"
 ```
 
@@ -242,15 +242,15 @@ git commit -m "feat: output module — container table formatting"
 ### Task 4: Env resolution opt-in (`--env` flag)
 
 **Files:**
-- Modify: `src/dokployctl/env.py`
-- Modify: `src/dokployctl/deploy.py`
+- Modify: `src/dokploy-ctl/env.py`
+- Modify: `src/dokploy-ctl/deploy.py`
 - Create: `tests/test_env_v2.py`
 
 - [ ] **Step 1: Write failing tests**
 
 ```python
 # tests/test_env_v2.py
-from dokployctl.env import resolve_env
+from dokploy-ctl.env import resolve_env
 
 def test_resolve_env_returns_none_when_no_flag(monkeypatch):
     """Default: no env resolution even if compose has ${VAR} refs."""
@@ -289,7 +289,7 @@ def resolve_env(env_flag: bool, env_file: str | None, compose_content: str) -> s
 
 - [ ] **Step 4: Update `deploy.py`**
 
-Add `--env` flag to both `deploy` and `sync` commands. Update `_do_sync` to pass `env_flag` through to `resolve_env`. Update deploy title from "dokctl" to "dokployctl".
+Add `--env` flag to both `deploy` and `sync` commands. Update `_do_sync` to pass `env_flag` through to `resolve_env`. Update deploy title from "dokctl" to "dokploy-ctl".
 
 - [ ] **Step 5: Run tests, verify pass** (both new and existing)
 
@@ -298,7 +298,7 @@ Run: `uv run pytest -v`
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/dokployctl/env.py src/dokployctl/deploy.py tests/test_env_v2.py
+git add src/dokploy-ctl/env.py src/dokploy-ctl/deploy.py tests/test_env_v2.py
 git commit -m "feat: env resolution opt-in — --env flag, breaking change"
 ```
 
@@ -307,7 +307,7 @@ git commit -m "feat: env resolution opt-in — --env flag, breaking change"
 ### Task 5: Deploy with LDD output + auto-escalation
 
 **Files:**
-- Modify: `src/dokployctl/deploy.py`
+- Modify: `src/dokploy-ctl/deploy.py`
 - Create: `tests/test_deploy_v2.py`
 
 - [ ] **Step 1: Write failing tests for LDD output**
@@ -318,7 +318,7 @@ Test that deploy output includes timestamps and the timer summary line. Use clic
 # tests/test_deploy_v2.py
 from unittest.mock import MagicMock, patch
 from click.testing import CliRunner
-from dokployctl.cli import cli
+from dokploy-ctl.cli import cli
 
 def test_deploy_output_has_timestamps():
     """Deploy output should include [MM:SS] timestamps."""
@@ -348,7 +348,7 @@ Run: `uv run pytest -v`
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/dokployctl/deploy.py tests/test_deploy_v2.py
+git add src/dokploy-ctl/deploy.py tests/test_deploy_v2.py
 git commit -m "feat: deploy with LDD output — timestamps, auto-escalation, hints"
 ```
 
@@ -357,7 +357,7 @@ git commit -m "feat: deploy with LDD output — timestamps, auto-escalation, hin
 ### Task 6: Status — merge live containers, rich output
 
 **Files:**
-- Modify: `src/dokployctl/status.py`
+- Modify: `src/dokploy-ctl/status.py`
 - Create: `tests/test_status_v2.py`
 
 - [ ] **Step 1: Write failing tests**
@@ -366,7 +366,7 @@ git commit -m "feat: deploy with LDD output — timestamps, auto-escalation, hin
 # tests/test_status_v2.py
 from unittest.mock import patch, MagicMock
 from click.testing import CliRunner
-from dokployctl.cli import cli
+from dokploy-ctl.cli import cli
 
 def test_status_shows_containers_by_default():
     """status should always show containers (no --live needed)."""
@@ -388,7 +388,7 @@ Remove `--live` flag (accept but ignore with deprecation warning for backward co
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/dokployctl/status.py tests/test_status_v2.py
+git add src/dokploy-ctl/status.py tests/test_status_v2.py
 git commit -m "feat: status merged — always shows live containers, hints, timestamps"
 ```
 
@@ -397,9 +397,9 @@ git commit -m "feat: status merged — always shows live containers, hints, time
 ### Task 7: Find command
 
 **Files:**
-- Create: `src/dokployctl/find_cmd.py`
+- Create: `src/dokploy-ctl/find_cmd.py`
 - Create: `tests/test_find.py`
-- Modify: `src/dokployctl/cli.py` — register find command
+- Modify: `src/dokploy-ctl/cli.py` — register find command
 
 - [ ] **Step 1: Write failing tests**
 
@@ -407,7 +407,7 @@ git commit -m "feat: status merged — always shows live containers, hints, time
 # tests/test_find.py
 from unittest.mock import patch, MagicMock
 from click.testing import CliRunner
-from dokployctl.cli import cli
+from dokploy-ctl.cli import cli
 
 def test_find_lists_all_projects():
     """find with no args lists all projects."""
@@ -427,8 +427,8 @@ def test_find_filters_by_name():
 """Find command — list/search compose apps."""
 
 import click
-from dokployctl.client import load_config, make_client, api_call, _err
-from dokployctl.timer import Timer
+from dokploy-ctl.client import load_config, make_client, api_call, _err
+from dokploy-ctl.timer import Timer
 
 
 @click.command()
@@ -473,7 +473,7 @@ def find(name: str | None) -> None:
 - [ ] **Step 4: Register in cli.py**
 
 ```python
-from dokployctl.find_cmd import find
+from dokploy-ctl.find_cmd import find
 cli.add_command(find)
 ```
 
@@ -481,7 +481,7 @@ cli.add_command(find)
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/dokployctl/find_cmd.py tests/test_find.py src/dokployctl/cli.py
+git add src/dokploy-ctl/find_cmd.py tests/test_find.py src/dokploy-ctl/cli.py
 git commit -m "feat: find command — list/search compose apps by project name"
 ```
 
@@ -490,10 +490,10 @@ git commit -m "feat: find command — list/search compose apps by project name"
 ### Task 8: Stop and Start commands
 
 **Files:**
-- Create: `src/dokployctl/stop_cmd.py`
-- Create: `src/dokployctl/start_cmd.py`
+- Create: `src/dokploy-ctl/stop_cmd.py`
+- Create: `src/dokploy-ctl/start_cmd.py`
 - Create: `tests/test_stop_start.py`
-- Modify: `src/dokployctl/cli.py` — register both commands
+- Modify: `src/dokploy-ctl/cli.py` — register both commands
 
 - [ ] **Step 1: Write failing tests**
 
@@ -501,7 +501,7 @@ git commit -m "feat: find command — list/search compose apps by project name"
 # tests/test_stop_start.py
 from unittest.mock import patch, MagicMock
 from click.testing import CliRunner
-from dokployctl.cli import cli
+from dokploy-ctl.cli import cli
 
 def test_stop_calls_compose_stop():
     """stop should call compose.stop endpoint."""
@@ -519,9 +519,9 @@ def test_start_calls_compose_start():
 """Stop command."""
 
 import click
-from dokployctl.client import load_config, make_client, api_call, _err, DOKPLOY_ID
-from dokployctl.hints import hint_restart
-from dokployctl.timer import Timer
+from dokploy-ctl.client import load_config, make_client, api_call, _err, DOKPLOY_ID
+from dokploy-ctl.hints import hint_restart
+from dokploy-ctl.timer import Timer
 
 
 @click.command(context_settings={"ignore_unknown_options": True})
@@ -549,8 +549,8 @@ Similar to stop, but after calling `compose.start`, run the same health-check wo
 - [ ] **Step 5: Register both in cli.py**
 
 ```python
-from dokployctl.stop_cmd import stop
-from dokployctl.start_cmd import start
+from dokploy-ctl.stop_cmd import stop
+from dokploy-ctl.start_cmd import start
 cli.add_command(stop)
 cli.add_command(start)
 ```
@@ -559,7 +559,7 @@ cli.add_command(start)
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/dokployctl/stop_cmd.py src/dokployctl/start_cmd.py tests/test_stop_start.py src/dokployctl/cli.py
+git add src/dokploy-ctl/stop_cmd.py src/dokploy-ctl/start_cmd.py tests/test_stop_start.py src/dokploy-ctl/cli.py
 git commit -m "feat: stop + start commands with health verification"
 ```
 
@@ -568,7 +568,7 @@ git commit -m "feat: stop + start commands with health verification"
 ### Task 9: Logs — default --since 5m, timestamps
 
 **Files:**
-- Modify: `src/dokployctl/logs.py`
+- Modify: `src/dokploy-ctl/logs.py`
 
 - [ ] **Step 1: Change --since default**
 
@@ -585,45 +585,45 @@ Run: `uv run pytest -v`
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/dokployctl/logs.py
+git add src/dokploy-ctl/logs.py
 git commit -m "feat: logs — default --since 5m, timestamps, container IDs in headers"
 ```
 
 ---
 
-### Task 10: Init — updated output, bare dokployctl → find
+### Task 10: Init — updated output, bare dokploy-ctl → find
 
 **Files:**
-- Modify: `src/dokployctl/init_cmd.py`
-- Modify: `src/dokployctl/cli.py`
+- Modify: `src/dokploy-ctl/init_cmd.py`
+- Modify: `src/dokploy-ctl/cli.py`
 
 - [ ] **Step 1: Update init output**
 
-Add Timer. Change final output to suggest dokployctl commands:
+Add Timer. Change final output to suggest dokploy-ctl commands:
 ```python
 click.echo(f"\nNext steps:")
-click.echo(f"  dokployctl deploy {compose_id} docker-compose.prod.yml --env")
-click.echo(f"  dokployctl status {compose_id}")
+click.echo(f"  dokploy-ctl deploy {compose_id} docker-compose.prod.yml --env")
+click.echo(f"  dokploy-ctl status {compose_id}")
 ```
 
-- [ ] **Step 2: Handle bare `dokployctl` invocation**
+- [ ] **Step 2: Handle bare `dokploy-ctl` invocation**
 
 In `cli.py`, change the click group to `invoke_without_command=True` and add a callback that runs `find` when no subcommand is given:
 
 ```python
 @click.group(invoke_without_command=True)
-@click.version_option(package_name="dokployctl")
+@click.version_option(package_name="dokploy-ctl")
 @click.pass_context
 def cli(ctx: click.Context) -> None:
-    """dokployctl — CLI for Dokploy deployments."""
+    """dokploy-ctl — CLI for Dokploy deployments."""
     if ctx.invoked_subcommand is None:
         ctx.invoke(find)
 ```
 
-- [ ] **Step 3: Verify bare dokployctl lists apps**
+- [ ] **Step 3: Verify bare dokploy-ctl lists apps**
 
-Run: `uv run dokployctl` (without args — should list compose apps, not help)
-Run: `uv run dokployctl --help` (should still show help)
+Run: `uv run dokploy-ctl` (without args — should list compose apps, not help)
+Run: `uv run dokploy-ctl --help` (should still show help)
 
 - [ ] **Step 4: Run full test suite**
 
@@ -632,8 +632,8 @@ Run: `make check`
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/dokployctl/init_cmd.py src/dokployctl/cli.py
-git commit -m "feat: init updated output, bare dokployctl lists compose apps"
+git add src/dokploy-ctl/init_cmd.py src/dokploy-ctl/cli.py
+git commit -m "feat: init updated output, bare dokploy-ctl lists compose apps"
 ```
 
 ---
@@ -641,7 +641,7 @@ git commit -m "feat: init updated output, bare dokployctl lists compose apps"
 ### Task 11: Version bump + README update
 
 **Files:**
-- Modify: `src/dokployctl/__init__.py`
+- Modify: `src/dokploy-ctl/__init__.py`
 - Modify: `README.md`
 
 - [ ] **Step 1: Bump version to 0.2.0**
@@ -665,7 +665,7 @@ Run: `uv build`
 - [ ] **Step 5: Commit and push**
 
 ```bash
-git add src/dokployctl/__init__.py README.md
+git add src/dokploy-ctl/__init__.py README.md
 git commit -m "feat: v0.2.0 — AI-native CLI with LDD output, new commands"
 git push
 ```

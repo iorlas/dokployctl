@@ -5,8 +5,8 @@ import sys
 
 import click
 
-from dokployctl.client import _err, api_call, load_config, make_client, print_response
-from dokployctl.timer import Timer
+from dokploy_ctl.client import _err, api_call, load_config, make_client, print_response
+from dokploy_ctl.timer import Timer
 
 
 @click.command()
@@ -59,5 +59,5 @@ def init(project_id: str, app_name: str) -> None:
     timer.summary(f"Done. Compose ID: {compose_id}")
 
     click.echo("\nNext steps:")
-    click.echo(f"  dokployctl deploy {compose_id} docker-compose.prod.yml --env")
-    click.echo(f"  dokployctl status {compose_id}")
+    click.echo(f"  dokploy-ctl deploy {compose_id} docker-compose.prod.yml --env")
+    click.echo(f"  dokploy-ctl status {compose_id}")

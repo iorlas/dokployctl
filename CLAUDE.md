@@ -1,4 +1,4 @@
-# dokployctl — CLI for Dokploy deployments
+# dokploy-ctl — CLI for Dokploy deployments
 
 Pure Python CLI (click + httpx + websockets) for deploying, polling, and debugging Dokploy services.
 
@@ -14,7 +14,7 @@ Pure Python CLI (click + httpx + websockets) for deploying, polling, and debuggi
 ## Never
 
 - Never commit `.env` files or API tokens
-- Never run `dokployctl` commands against production without explicit user confirmation
+- Never run `dokploy-ctl` commands against production without explicit user confirmation
 
 ## Ask First
 

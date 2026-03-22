@@ -1,20 +1,20 @@
-# dokployctl
+# dokploy-ctl
 
 AI-native CLI for Dokploy deployments — deploy, sync, inspect, debug from the terminal (and from agents).
 
 ## Install
 
 ```bash
-pip install dokployctl
+pip install dokploy-ctl
 # or
-uv tool install dokployctl
+uv tool install dokploy-ctl
 ```
 
 ## Quick Start
 
 ```bash
-dokployctl login --url https://your-dokploy.example.com --token <api-token>
-dokployctl deploy <compose-app-id> docker-compose.prod.yml
+dokploy-ctl login --url https://your-dokploy.example.com --token <api-token>
+dokploy-ctl deploy <compose-app-id> docker-compose.prod.yml
 ```
 
 ## Commands
@@ -32,7 +32,7 @@ dokployctl deploy <compose-app-id> docker-compose.prod.yml
 | `stop`   | Stop a compose app                                                 |
 | `start`  | Start a compose app                                                |
 
-Bare `dokployctl` lists all compose apps.
+Bare `dokploy-ctl` lists all compose apps.
 
 ## LDD Output
 
@@ -53,7 +53,7 @@ Breaking changes in v0.2:
 - **`deploy` no longer auto-resolves env vars** — pass `--env KEY=VAL` or `--env-file .env` explicitly in CI
 - **`logs --since` default changed** from `all` to `5m` — add `--since all` to restore previous behavior
 - **`status` always shows live containers** — `--live` flag removed, it's now the default
-- **Bare `dokployctl`** lists compose apps instead of showing help
+- **Bare `dokploy-ctl`** lists compose apps instead of showing help
 
 ## Links
 

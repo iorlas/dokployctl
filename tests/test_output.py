@@ -1,4 +1,4 @@
-from dokployctl.output import format_container_row, format_container_table, parse_health, parse_service_name, parse_uptime
+from dokploy_ctl.output import format_container_row, format_container_table, parse_health, parse_service_name, parse_uptime
 
 
 def test_parse_service_name():

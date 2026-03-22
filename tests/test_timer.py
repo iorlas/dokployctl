@@ -1,4 +1,4 @@
-from dokployctl.timer import Timer
+from dokploy_ctl.timer import Timer
 
 
 def test_timer_starts_at_zero():

@@ -6,7 +6,7 @@ import urllib.parse
 
 import websockets
 
-from dokployctl.client import _err
+from dokploy_ctl.client import _err
 
 
 def _ws_url(base_url: str) -> str:

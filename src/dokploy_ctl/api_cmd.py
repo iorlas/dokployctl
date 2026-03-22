@@ -4,7 +4,7 @@ import json
 
 import click
 
-from dokployctl.client import api_call, load_config, make_client, print_response
+from dokploy_ctl.client import api_call, load_config, make_client, print_response
 
 
 @click.command()

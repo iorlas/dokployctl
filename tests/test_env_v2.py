@@ -1,6 +1,6 @@
 import pytest
 
-from dokployctl.env import resolve_env
+from dokploy_ctl.env import resolve_env
 
 
 def test_resolve_env_returns_none_when_no_flag():

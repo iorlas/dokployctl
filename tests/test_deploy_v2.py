@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import httpx
 from click.testing import CliRunner
 
-from dokployctl.cli import cli
+from dokploy_ctl.cli import cli
 
 
 def _mock_response(data, status_code=200):
@@ -18,9 +18,9 @@ def _mock_response(data, status_code=200):
     return resp
 
 
-@patch("dokployctl.deploy.load_config", return_value=("https://example.com", "token"))
-@patch("dokployctl.deploy.make_client")
-@patch("dokployctl.deploy.api_call")
+@patch("dokploy_ctl.deploy.load_config", return_value=("https://example.com", "token"))
+@patch("dokploy_ctl.deploy.make_client")
+@patch("dokploy_ctl.deploy.api_call")
 def test_deploy_has_timestamps(mock_api, mock_client, mock_config, tmp_path):
     """Deploy output must include [MM:SS] timestamp on every line."""
     compose = tmp_path / "docker-compose.prod.yml"
@@ -36,10 +36,10 @@ def test_deploy_has_timestamps(mock_api, mock_client, mock_config, tmp_path):
 
     with (
         patch(
-            "dokployctl.deploy.get_containers",
+            "dokploy_ctl.deploy.get_containers",
             return_value=[{"name": "test-app-web-1", "state": "running", "status": "Up 1m (healthy)", "containerId": "abc123"}],
         ),
-        patch("dokployctl.deploy.verify_container_health", return_value=True),
+        patch("dokploy_ctl.deploy.verify_container_health", return_value=True),
     ):
         runner = CliRunner()
         result = runner.invoke(cli, ["deploy", "test-id", str(compose)])
@@ -48,9 +48,9 @@ def test_deploy_has_timestamps(mock_api, mock_client, mock_config, tmp_path):
     assert "total)" in result.output
 
 
-@patch("dokployctl.deploy.load_config", return_value=("https://example.com", "token"))
-@patch("dokployctl.deploy.make_client")
-@patch("dokployctl.deploy.api_call")
+@patch("dokploy_ctl.deploy.load_config", return_value=("https://example.com", "token"))
+@patch("dokploy_ctl.deploy.make_client")
+@patch("dokploy_ctl.deploy.api_call")
 def test_deploy_summary_success(mock_api, mock_client, mock_config, tmp_path):
     """Deploy summary must include 'Deploy succeeded.' on success."""
     compose = tmp_path / "docker-compose.prod.yml"
@@ -64,7 +64,10 @@ def test_deploy_summary_success(mock_api, mock_client, mock_config, tmp_path):
         _mock_response({"appName": "test-app"}),
     ]
 
-    with patch("dokployctl.deploy.get_containers", return_value=[]), patch("dokployctl.deploy.verify_container_health", return_value=True):
+    with (
+        patch("dokploy_ctl.deploy.get_containers", return_value=[]),
+        patch("dokploy_ctl.deploy.verify_container_health", return_value=True),
+    ):
         runner = CliRunner()
         result = runner.invoke(cli, ["deploy", "test-id", str(compose)])
 
@@ -72,9 +75,9 @@ def test_deploy_summary_success(mock_api, mock_client, mock_config, tmp_path):
     assert "total)" in result.output
 
 
-@patch("dokployctl.deploy.load_config", return_value=("https://example.com", "token"))
-@patch("dokployctl.deploy.make_client")
-@patch("dokployctl.deploy.api_call")
+@patch("dokploy_ctl.deploy.load_config", return_value=("https://example.com", "token"))
+@patch("dokploy_ctl.deploy.make_client")
+@patch("dokploy_ctl.deploy.api_call")
 def test_sync_has_timestamps(mock_api, mock_client, mock_config, tmp_path):
     """Sync output must include [MM:SS] timestamps."""
     compose = tmp_path / "docker-compose.prod.yml"
@@ -88,9 +91,9 @@ def test_sync_has_timestamps(mock_api, mock_client, mock_config, tmp_path):
     assert "[00:00]" in result.output
 
 
-@patch("dokployctl.deploy.load_config", return_value=("https://example.com", "token"))
-@patch("dokployctl.deploy.make_client")
-@patch("dokployctl.deploy.api_call")
+@patch("dokploy_ctl.deploy.load_config", return_value=("https://example.com", "token"))
+@patch("dokploy_ctl.deploy.make_client")
+@patch("dokploy_ctl.deploy.api_call")
 def test_deploy_failure_shows_log_and_hint(mock_api, mock_client, mock_config, tmp_path):
     """On deploy failure, output includes deploy log header and a hint."""
     compose = tmp_path / "docker-compose.prod.yml"
@@ -114,9 +117,9 @@ def test_deploy_failure_shows_log_and_hint(mock_api, mock_client, mock_config, t
     ]
 
     with (
-        patch("dokployctl.deploy.show_deploy_log"),
+        patch("dokploy_ctl.deploy.show_deploy_log"),
         patch(
-            "dokployctl.deploy.get_containers",
+            "dokploy_ctl.deploy.get_containers",
             return_value=[
                 {
                     "name": "test-app-worker-1",
@@ -126,7 +129,7 @@ def test_deploy_failure_shows_log_and_hint(mock_api, mock_client, mock_config, t
                 }
             ],
         ),
-        patch("dokployctl.deploy.show_problem_logs"),
+        patch("dokploy_ctl.deploy.show_problem_logs"),
     ):
         runner = CliRunner()
         result = runner.invoke(cli, ["deploy", "test-id", str(compose)])
@@ -139,9 +142,9 @@ def test_deploy_failure_shows_log_and_hint(mock_api, mock_client, mock_config, t
     assert "failed" in result.output.lower()
 
 
-@patch("dokployctl.deploy.load_config", return_value=("https://example.com", "token"))
-@patch("dokployctl.deploy.make_client")
-@patch("dokployctl.deploy.api_call")
+@patch("dokploy_ctl.deploy.load_config", return_value=("https://example.com", "token"))
+@patch("dokploy_ctl.deploy.make_client")
+@patch("dokploy_ctl.deploy.api_call")
 def test_deploy_poll_status_shown(mock_api, mock_client, mock_config, tmp_path):
     """Each poll iteration must emit a timestamped line with status."""
     compose = tmp_path / "docker-compose.prod.yml"
@@ -157,8 +160,8 @@ def test_deploy_poll_status_shown(mock_api, mock_client, mock_config, tmp_path):
     ]
 
     with (
-        patch("dokployctl.deploy.get_containers", return_value=[]),
-        patch("dokployctl.deploy.verify_container_health", return_value=True),
+        patch("dokploy_ctl.deploy.get_containers", return_value=[]),
+        patch("dokploy_ctl.deploy.verify_container_health", return_value=True),
         patch("time.sleep"),
     ):  # skip actual sleeping
         runner = CliRunner()
@@ -168,9 +171,9 @@ def test_deploy_poll_status_shown(mock_api, mock_client, mock_config, tmp_path):
     assert "status=done" in result.output
 
 
-@patch("dokployctl.deploy.load_config", return_value=("https://example.com", "token"))
-@patch("dokployctl.deploy.make_client")
-@patch("dokployctl.deploy.api_call")
+@patch("dokploy_ctl.deploy.load_config", return_value=("https://example.com", "token"))
+@patch("dokploy_ctl.deploy.make_client")
+@patch("dokploy_ctl.deploy.api_call")
 def test_sync_shows_char_count(mock_api, mock_client, mock_config, tmp_path):
     """Sync output must mention char count and sourceType."""
     compose = tmp_path / "docker-compose.prod.yml"

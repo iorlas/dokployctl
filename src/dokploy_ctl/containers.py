@@ -5,8 +5,8 @@ import time
 import click
 import httpx
 
-from dokployctl.client import _err, api_call
-from dokployctl.websocket import fetch_container_logs, fetch_deploy_log
+from dokploy_ctl.client import _err, api_call
+from dokploy_ctl.websocket import fetch_container_logs, fetch_deploy_log
 
 
 def get_containers(client: httpx.Client, app_name: str) -> list[dict]:

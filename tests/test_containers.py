@@ -1,4 +1,4 @@
-from dokployctl.containers import _container_converging, _container_ok, _is_one_shot
+from dokploy_ctl.containers import _container_converging, _container_ok, _is_one_shot
 
 
 def test_one_shot_exited_0():

@@ -2,11 +2,11 @@
 
 import click
 
-from dokployctl.client import DOKPLOY_ID, api_call, load_config, make_client, print_response
-from dokployctl.containers import _container_ok, get_containers
-from dokployctl.hints import hint_no_containers, hint_unhealthy
-from dokployctl.output import format_container_table, parse_service_name
-from dokployctl.timer import Timer
+from dokploy_ctl.client import DOKPLOY_ID, api_call, load_config, make_client, print_response
+from dokploy_ctl.containers import _container_ok, get_containers
+from dokploy_ctl.hints import hint_no_containers, hint_unhealthy
+from dokploy_ctl.output import format_container_table, parse_service_name
+from dokploy_ctl.timer import Timer
 
 
 @click.command(context_settings={"ignore_unknown_options": True})

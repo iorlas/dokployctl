@@ -2,22 +2,22 @@
 
 import click
 
-from dokployctl.api_cmd import api
-from dokployctl.client import DEFAULT_CONFIG_DIR
-from dokployctl.deploy import deploy, sync
-from dokployctl.find_cmd import find
-from dokployctl.init_cmd import init
-from dokployctl.logs import logs
-from dokployctl.start_cmd import start
-from dokployctl.status import status
-from dokployctl.stop_cmd import stop
+from dokploy_ctl.api_cmd import api
+from dokploy_ctl.client import DEFAULT_CONFIG_DIR
+from dokploy_ctl.deploy import deploy, sync
+from dokploy_ctl.find_cmd import find
+from dokploy_ctl.init_cmd import init
+from dokploy_ctl.logs import logs
+from dokploy_ctl.start_cmd import start
+from dokploy_ctl.status import status
+from dokploy_ctl.stop_cmd import stop
 
 
 @click.group(invoke_without_command=True)
-@click.version_option(package_name="dokployctl")
+@click.version_option(package_name="dokploy-ctl")
 @click.pass_context
 def cli(ctx: click.Context) -> None:
-    """dokployctl — CLI for Dokploy deployments."""
+    """dokploy-ctl — CLI for Dokploy deployments."""
     if ctx.invoked_subcommand is None:
         ctx.invoke(find)
 

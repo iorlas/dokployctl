@@ -1,14 +1,14 @@
-# dokployctl v2 — AI-Native CLI Design
+# dokploy-ctl v2 — AI-Native CLI Design
 
 ## Goal
 
-Redesign dokployctl so AI agents never need to bypass the CLI. Every command is a self-contained workflow that narrates what it's doing, auto-escalates on failure, and tells the agent what to do next. Zero manual deployment tasks for the human.
+Redesign dokploy-ctl so AI agents never need to bypass the CLI. Every command is a self-contained workflow that narrates what it's doing, auto-escalates on failure, and tells the agent what to do next. Zero manual deployment tasks for the human.
 
 ## Motivation
 
 Session data analysis (188 tool invocations across aggre/reelm/proxy-hub):
 - **73 raw `api` calls** — agents constructed JSON payloads by hand because dedicated commands were missing or insufficient
-- **33 library imports** — agents imported dokployctl as Python module to call `get_containers()` because `status` didn't expose enough data
+- **33 library imports** — agents imported dokploy-ctl as Python module to call `get_containers()` because `status` didn't expose enough data
 - **47 manual deploy chains** — agents bypassed `deploy` because it required all env vars locally, then manually did sync → deploy → poll in bash loops
 - **0 uses of `status --live`** — the feature existed but agents couldn't discover it
 
@@ -46,7 +46,7 @@ Unhealthy services:
   worker  (container: a1b2c3d4)  — exited(1), 30s ago
 
 Hint: worker failed to start. Check Dockerfile entrypoint.
-  dokployctl logs IWcYWttLzI --service worker --tail 200
+  dokploy-ctl logs IWcYWttLzI --service worker --tail 200
 ```
 
 Use **compose service names** as primary identifier (what agents know from docker-compose.yml), container IDs in parentheses for raw Docker use.
@@ -61,14 +61,14 @@ When something looks wrong, the output says what's wrong and suggests the exact 
 
 ### 5. Zero-guessing discovery
 
-Running `dokployctl` with no args lists all known compose apps:
+Running `dokploy-ctl` with no args lists all known compose apps:
 
 ```
 Compose apps:
   IWcYWttLzI  aggre         done   3 services  2m ago
   xK9pL2mN4R  proxy-hub     done   1 service   1h ago
 
-Run: dokployctl status <id> for details
+Run: dokploy-ctl status <id> for details
 ```
 
 Every error message includes the exact command to fix it.
@@ -80,7 +80,7 @@ Every error message includes the exact command to fix it.
 ### `deploy` — redesigned
 
 ```
-dokployctl deploy <compose-id> <compose-file> [--env] [--env-file FILE] [--timeout 300]
+dokploy-ctl deploy <compose-id> <compose-file> [--env] [--env-file FILE] [--timeout 300]
 ```
 
 **Breaking change:** env resolution is now opt-in, not default.
@@ -113,8 +113,8 @@ When deploy fails or containers are unhealthy, `deploy` automatically:
 [00:12]   FileNotFoundError: /app/run.sh
 [00:12]
 [00:12] Hint: worker failed to start. Check the Dockerfile entrypoint.
-[00:12]   dokployctl logs IWcYWttLzI --service worker --tail 200
-[00:12]   dokployctl status IWcYWttLzI
+[00:12]   dokploy-ctl logs IWcYWttLzI --service worker --tail 200
+[00:12]   dokploy-ctl status IWcYWttLzI
 [00:12]
 [00:12] Deploy failed (12s total). 1 unhealthy service.
 ```
@@ -122,7 +122,7 @@ When deploy fails or containers are unhealthy, `deploy` automatically:
 ### `status` — merged with `--live`
 
 ```
-dokployctl status <compose-id>
+dokploy-ctl status <compose-id>
 ```
 
 **Always shows everything** — compose config AND live containers. No `--live` flag.
@@ -153,17 +153,17 @@ Containers:
 If unhealthy containers exist, adds hints:
 ```
 Hint: worker is unhealthy.
-  dokployctl logs IWcYWttLzI --service worker --since 5m
+  dokploy-ctl logs IWcYWttLzI --service worker --since 5m
 ```
 
 ### `find` — new
 
 ```
-dokployctl find [name]
+dokploy-ctl find [name]
 ```
 
-- `dokployctl find aggre` — search by project/compose name, return matching compose IDs
-- `dokployctl find` (no args) — list all projects and compose apps (same as bare `dokployctl`)
+- `dokploy-ctl find aggre` — search by project/compose name, return matching compose IDs
+- `dokploy-ctl find` (no args) — list all projects and compose apps (same as bare `dokploy-ctl`)
 
 ```
 [00:00] Searching projects...
@@ -179,7 +179,7 @@ dokployctl find [name]
 ### `stop` — new
 
 ```
-dokployctl stop <compose-id>
+dokploy-ctl stop <compose-id>
 ```
 
 ```
@@ -187,14 +187,14 @@ dokployctl stop <compose-id>
 [00:03] Stopped. Final container states:
   worker=exited(0), hatchet-lite=exited(0), db=exited(0)
 
-Hint: To restart: dokployctl start IWcYWttLzI
+Hint: To restart: dokploy-ctl start IWcYWttLzI
 [00:03] Done (3s total).
 ```
 
 ### `start` — new
 
 ```
-dokployctl start <compose-id>
+dokploy-ctl start <compose-id>
 ```
 
 Starts the compose app, then runs the same health-check workflow as `deploy` — polls until all containers are healthy, auto-fetches logs on failure.
@@ -210,7 +210,7 @@ Starts the compose app, then runs the same health-check workflow as `deploy` —
 ### `logs` — minor changes
 
 ```
-dokployctl logs <compose-id> [--service NAME] [--tail N] [--since DURATION] [-D]
+dokploy-ctl logs <compose-id> [--service NAME] [--tail N] [--since DURATION] [-D]
 ```
 
 **Change:** default `--since` from `all` to `5m`. Most debugging is recent. Use `--since all` explicitly for full history.
@@ -229,14 +229,14 @@ Output adds timestamps and service name headers with container IDs:
 
 ### `init` — minor changes
 
-Update output to reference `dokployctl` commands:
+Update output to reference `dokploy-ctl` commands:
 ```
 Created compose app: IWcYWttLzI
 Fixed sourceType to 'raw'
 
 Next steps:
-  dokployctl deploy IWcYWttLzI docker-compose.prod.yml --env
-  dokployctl status IWcYWttLzI
+  dokploy-ctl deploy IWcYWttLzI docker-compose.prod.yml --env
+  dokploy-ctl status IWcYWttLzI
 ```
 
 ### `api` — unchanged
@@ -245,9 +245,9 @@ Raw API passthrough stays as escape hatch. No changes needed.
 
 ### `login` — unchanged
 
-### Bare `dokployctl` (no args, no `--help`)
+### Bare `dokploy-ctl` (no args, no `--help`)
 
-Instead of showing usage/help text, lists all compose apps (same as `dokployctl find`). `--help` still shows help text as usual.
+Instead of showing usage/help text, lists all compose apps (same as `dokploy-ctl find`). `--help` still shows help text as usual.
 
 ---
 
@@ -258,7 +258,7 @@ Instead of showing usage/help text, lists all compose apps (same as `dokployctl 
 **`sync` is kept.** It updates compose file + env in Dokploy without deploying. Same `--env` / `--env-file` flag pattern as `deploy`.
 
 ```
-dokployctl sync <compose-id> <compose-file> [--env] [--env-file FILE]
+dokploy-ctl sync <compose-id> <compose-file> [--env] [--env-file FILE]
 ```
 
 ```
@@ -331,7 +331,7 @@ A `hints` module that maps known error patterns to actionable suggestions:
 def hint_unhealthy(compose_id: str, service: str) -> str:
     return (
         f"Hint: {service} is unhealthy.\n"
-        f"  dokployctl logs {compose_id} --service {service} --since 5m"
+        f"  dokploy-ctl logs {compose_id} --service {service} --since 5m"
     )
 ```
 
@@ -352,7 +352,7 @@ All commands use a shared output module that handles:
 1. **`deploy` no longer resolves env by default.** Existing CI pipelines that rely on auto env resolution must add `--env` flag. This is the only breaking change.
 2. **`status` always shows live containers.** `--live` flag is removed (ignored if passed for backward compat, with deprecation warning).
 3. **`logs --since` default changes** from `all` to `5m`.
-4. **Bare `dokployctl`** shows compose apps instead of help text.
+4. **Bare `dokploy-ctl`** shows compose apps instead of help text.
 
 ---
 

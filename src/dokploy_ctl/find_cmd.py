@@ -2,8 +2,8 @@
 
 import click
 
-from dokployctl.client import _err, api_call, load_config, make_client
-from dokployctl.timer import Timer
+from dokploy_ctl.client import _err, api_call, load_config, make_client
+from dokploy_ctl.timer import Timer
 
 
 @click.command()

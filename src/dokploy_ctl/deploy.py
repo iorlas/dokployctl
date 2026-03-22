@@ -8,12 +8,12 @@ from pathlib import Path
 
 import click
 
-from dokployctl.client import DOKPLOY_ID, api_call, load_config, make_client, print_response
-from dokployctl.containers import get_containers, show_deploy_log, show_problem_logs, verify_container_health
-from dokployctl.env import resolve_env
-from dokployctl.hints import hint_deploy_failed, hint_unhealthy
-from dokployctl.output import parse_service_name
-from dokployctl.timer import Timer
+from dokploy_ctl.client import DOKPLOY_ID, api_call, load_config, make_client, print_response
+from dokploy_ctl.containers import get_containers, show_deploy_log, show_problem_logs, verify_container_health
+from dokploy_ctl.env import resolve_env
+from dokploy_ctl.hints import hint_deploy_failed, hint_unhealthy
+from dokploy_ctl.output import parse_service_name
+from dokploy_ctl.timer import Timer
 
 
 def _do_sync(client, compose_id: str, compose_file: str, env_file: str | None, env_flag: bool = False, timer: Timer | None = None) -> None:
@@ -94,7 +94,7 @@ def deploy(compose_id: str, compose_file: str, env_file: str | None, env_flag: b
 
     # Step 3: trigger deploy
     image_tag = os.environ.get("IMAGE_TAG", "")
-    title = f"Deploy {image_tag}" if image_tag else "Deploy via dokployctl"
+    title = f"Deploy {image_tag}" if image_tag else "Deploy via dokploy-ctl"
 
     timer.log(f"Triggering deploy ({title})...")
     deploy_resp = api_call(

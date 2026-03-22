@@ -2,10 +2,10 @@
 
 import click
 
-from dokployctl.client import DOKPLOY_ID, api_call, load_config, make_client, print_response
-from dokployctl.containers import get_containers
-from dokployctl.timer import Timer
-from dokployctl.websocket import fetch_container_logs, fetch_deploy_log
+from dokploy_ctl.client import DOKPLOY_ID, api_call, load_config, make_client, print_response
+from dokploy_ctl.containers import get_containers
+from dokploy_ctl.timer import Timer
+from dokploy_ctl.websocket import fetch_container_logs, fetch_deploy_log
 
 
 @click.command(context_settings={"ignore_unknown_options": True})

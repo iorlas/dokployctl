@@ -37,7 +37,7 @@ def load_config(config_dir: Path = DEFAULT_CONFIG_DIR) -> tuple[str, str]:
         for e in errors:
             click.echo(f"error: {e}", err=True)
         click.echo(
-            f"\nSetup:\n  dokployctl login --url <url> --token <token>\n"
+            f"\nSetup:\n  dokploy-ctl login --url <url> --token <token>\n"
             f"  Or manually:\n  mkdir -p {config_dir}\n"
             f"  echo 'YOUR_TOKEN' > {token_path}\n"
             f"  echo 'https://your-dokploy-url' > {url_path}",

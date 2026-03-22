@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import httpx
 from click.testing import CliRunner
 
-from dokployctl.cli import cli
+from dokploy_ctl.cli import cli
 
 
 def _mock_response(data, status_code=200):
@@ -17,10 +17,10 @@ def _mock_response(data, status_code=200):
     return resp
 
 
-@patch("dokployctl.status.load_config", return_value=("https://example.com", "token"))
-@patch("dokployctl.status.make_client")
-@patch("dokployctl.status.api_call")
-@patch("dokployctl.status.get_containers")
+@patch("dokploy_ctl.status.load_config", return_value=("https://example.com", "token"))
+@patch("dokploy_ctl.status.make_client")
+@patch("dokploy_ctl.status.api_call")
+@patch("dokploy_ctl.status.get_containers")
 def test_status_always_shows_containers(mock_containers, mock_api, mock_client, mock_config):
     mock_api.return_value = _mock_response(
         {
@@ -46,10 +46,10 @@ def test_status_always_shows_containers(mock_containers, mock_api, mock_client, 
     assert "total)" in result.output
 
 
-@patch("dokployctl.status.load_config", return_value=("https://example.com", "token"))
-@patch("dokployctl.status.make_client")
-@patch("dokployctl.status.api_call")
-@patch("dokployctl.status.get_containers")
+@patch("dokploy_ctl.status.load_config", return_value=("https://example.com", "token"))
+@patch("dokploy_ctl.status.make_client")
+@patch("dokploy_ctl.status.api_call")
+@patch("dokploy_ctl.status.get_containers")
 def test_status_hints_for_unhealthy(mock_containers, mock_api, mock_client, mock_config):
     mock_api.return_value = _mock_response(
         {
@@ -73,10 +73,10 @@ def test_status_hints_for_unhealthy(mock_containers, mock_api, mock_client, mock
     assert "worker" in result.output
 
 
-@patch("dokployctl.status.load_config", return_value=("https://example.com", "token"))
-@patch("dokployctl.status.make_client")
-@patch("dokployctl.status.api_call")
-@patch("dokployctl.status.get_containers")
+@patch("dokploy_ctl.status.load_config", return_value=("https://example.com", "token"))
+@patch("dokploy_ctl.status.make_client")
+@patch("dokploy_ctl.status.api_call")
+@patch("dokploy_ctl.status.get_containers")
 def test_status_no_containers_shows_hint(mock_containers, mock_api, mock_client, mock_config):
     mock_api.return_value = _mock_response(
         {
@@ -98,10 +98,10 @@ def test_status_no_containers_shows_hint(mock_containers, mock_api, mock_client,
     assert "Hint:" in result.output
 
 
-@patch("dokployctl.status.load_config", return_value=("https://example.com", "token"))
-@patch("dokployctl.status.make_client")
-@patch("dokployctl.status.api_call")
-@patch("dokployctl.status.get_containers")
+@patch("dokploy_ctl.status.load_config", return_value=("https://example.com", "token"))
+@patch("dokploy_ctl.status.make_client")
+@patch("dokploy_ctl.status.api_call")
+@patch("dokploy_ctl.status.get_containers")
 def test_status_summary_counts_containers(mock_containers, mock_api, mock_client, mock_config):
     mock_api.return_value = _mock_response(
         {
@@ -139,10 +139,10 @@ def test_status_summary_counts_containers(mock_containers, mock_api, mock_client
     assert "healthy" in result.output.lower()
 
 
-@patch("dokployctl.status.load_config", return_value=("https://example.com", "token"))
-@patch("dokployctl.status.make_client")
-@patch("dokployctl.status.api_call")
-@patch("dokployctl.status.get_containers")
+@patch("dokploy_ctl.status.load_config", return_value=("https://example.com", "token"))
+@patch("dokploy_ctl.status.make_client")
+@patch("dokploy_ctl.status.api_call")
+@patch("dokploy_ctl.status.get_containers")
 def test_status_deprecated_live_flag_accepted(mock_containers, mock_api, mock_client, mock_config):
     """--live flag should be accepted (backward compat) but deprecated."""
     mock_api.return_value = _mock_response(

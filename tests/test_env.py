@@ -1,4 +1,4 @@
-from dokployctl.env import build_env_from_compose, extract_env_vars
+from dokploy_ctl.env import build_env_from_compose, extract_env_vars
 
 
 def test_extract_env_vars():

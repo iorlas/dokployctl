@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import httpx
 from click.testing import CliRunner
 
-from dokployctl.cli import cli
+from dokploy_ctl.cli import cli
 
 
 def _mock_response(data, status_code=200):
@@ -15,9 +15,9 @@ def _mock_response(data, status_code=200):
     return resp
 
 
-@patch("dokployctl.find_cmd.load_config", return_value=("https://example.com", "token"))
-@patch("dokployctl.find_cmd.make_client")
-@patch("dokployctl.find_cmd.api_call")
+@patch("dokploy_ctl.find_cmd.load_config", return_value=("https://example.com", "token"))
+@patch("dokploy_ctl.find_cmd.make_client")
+@patch("dokploy_ctl.find_cmd.api_call")
 def test_find_lists_all(mock_api, mock_client, mock_config):
     mock_api.return_value = _mock_response(
         [
@@ -33,9 +33,9 @@ def test_find_lists_all(mock_api, mock_client, mock_config):
     assert "abc" in result.output
 
 
-@patch("dokployctl.find_cmd.load_config", return_value=("https://example.com", "token"))
-@patch("dokployctl.find_cmd.make_client")
-@patch("dokployctl.find_cmd.api_call")
+@patch("dokploy_ctl.find_cmd.load_config", return_value=("https://example.com", "token"))
+@patch("dokploy_ctl.find_cmd.make_client")
+@patch("dokploy_ctl.find_cmd.api_call")
 def test_find_filters_by_name(mock_api, mock_client, mock_config):
     mock_api.return_value = _mock_response(
         [
@@ -49,9 +49,9 @@ def test_find_filters_by_name(mock_api, mock_client, mock_config):
     assert "reelm" not in result.output
 
 
-@patch("dokployctl.find_cmd.load_config", return_value=("https://example.com", "token"))
-@patch("dokployctl.find_cmd.make_client")
-@patch("dokployctl.find_cmd.api_call")
+@patch("dokploy_ctl.find_cmd.load_config", return_value=("https://example.com", "token"))
+@patch("dokploy_ctl.find_cmd.make_client")
+@patch("dokploy_ctl.find_cmd.api_call")
 def test_find_no_results(mock_api, mock_client, mock_config):
     mock_api.return_value = _mock_response([])
     runner = CliRunner()
