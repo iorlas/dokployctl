@@ -5,10 +5,12 @@ Pure Python CLI (click + httpx + websockets) for deploying, polling, and debuggi
 ## Dev Commands
 
 - Run tests: `make test`
-- Lint: `make lint` (check only, never modifies files — safe to run anytime)
-- Fix: `make fix` (auto-fix, then runs lint to verify)
+- Lint: `make lint` or `agent-harness lint` (check only, never modifies files — safe to run anytime)
+- Fix: `make fix` or `agent-harness fix` (auto-fix, then runs lint to verify)
 - Full gate: `make check` (lint + test)
+- Audit: `agent-harness audit` (checks project hygiene)
 - Build: `make build`
+- Bootstrap: `make bootstrap` (installs deps, requires `agent-harness` CLI)
 - Never truncate commands with `| tail` or `| head` — output is already optimized
 
 ## Never

@@ -3,14 +3,14 @@ repos:
     hooks:
       - id: fix
         name: auto-fix
-        entry: make fix
+        entry: agent-harness fix
         language: system
         pass_filenames: false
         always_run: true
 
       - id: lint
         name: lint
-        entry: make lint
+        entry: agent-harness lint
         language: system
         pass_filenames: false
         always_run: true

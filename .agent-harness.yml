@@ -1,0 +1,17 @@
+# AI Harness configuration
+# Detected stacks: python
+stacks: [python]
+
+# exclude:
+#   - _archive/
+#   - vendor/
+
+python:
+  coverage_threshold: 58
+#   line_length: 140
+
+# javascript:
+#   coverage_threshold: 80
+
+# docker:
+#   own_image_prefix: "ghcr.io/myorg/"

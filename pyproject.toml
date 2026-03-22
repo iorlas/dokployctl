@@ -129,7 +129,10 @@ max-returns = 6
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-v --strict-markers --cov --cov-report=term:skip-covered --cov-report=xml --cov-fail-under=25"
+addopts = "-v --strict-markers --cov --cov-report=term:skip-covered --cov-report=xml --cov-fail-under=58"
+env = [
+    "DOKPLOY_CONFIG_DIR=/tmp/dokploy-test-config",
+]
 
 [tool.coverage.run]
 source = ["src/dokploy_ctl"]
@@ -153,4 +156,6 @@ dev = [
     "pytest-cov>=6",
     "diff-cover>=9",
     "ruff>=0.9",
+    "ty>=0.0.25",
+    "pytest-env>=1.6.0",
 ]
