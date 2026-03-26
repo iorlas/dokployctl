@@ -9,11 +9,16 @@ from pathlib import Path
 import click
 
 from dokploy_ctl.client import DOKPLOY_ID, api_call, load_config, make_client, print_response
-from dokploy_ctl.containers import get_containers, show_deploy_log, show_problem_logs, verify_container_health
+from dokploy_ctl.containers import show_deploy_log, show_problem_logs
+from dokploy_ctl.dokploy import DokployClient
 from dokploy_ctl.env import resolve_env
-from dokploy_ctl.hints import hint_deploy_failed, hint_unhealthy
-from dokploy_ctl.output import parse_service_name
+from dokploy_ctl.hints import hint_deploy_failed
+from dokploy_ctl.polling import check_stall, detect_phase, detect_transitions
 from dokploy_ctl.timer import Timer
+
+POLL_INTERVAL = 6
+HEARTBEAT_INTERVAL = 30
+STALL_THRESHOLD = 90
 
 
 def _do_sync(client, compose_id: str, compose_file: str, env_file: str | None, env_flag: bool = False, timer: Timer | None = None) -> None:
@@ -76,105 +81,149 @@ def sync(compose_id: str, compose_file: str, env_file: str | None, env_flag: boo
 @click.option("--env", "env_flag", is_flag=True, default=False, help="Resolve ${VAR} refs from environment")
 @click.option("--timeout", "-t", default=600, help="Deploy timeout in seconds (default: 600)")
 def deploy(compose_id: str, compose_file: str, env_file: str | None, env_flag: bool, timeout: int) -> None:
-    """Sync + deploy + poll + verify container health."""
-    url, token = load_config()
-    client = make_client(url, token)
+    """Sync + deploy + poll container transitions + verify health."""
+    dk = DokployClient()
+    url, token = dk.url, dk.token
     timer = Timer()
 
-    # Step 1: sync
-    _do_sync(client, compose_id, compose_file, env_file, env_flag, timer)
+    # Step 1: sync compose file
+    compose_content = Path(compose_file).read_text()
+    compose_len = len(compose_content)
+    timer.log(f"Syncing compose file ({compose_len:,} chars)...")
 
-    # Step 2: snapshot previous deployment ID
-    pre_resp = api_call(client, "GET", "deployment.allByCompose", {"composeId": compose_id})
-    prev_deploy_id = None
-    if not pre_resp.is_error:
-        pre_deps = pre_resp.json()
-        if pre_deps and isinstance(pre_deps, list):
-            prev_deploy_id = pre_deps[0].get("deploymentId")
+    env_content = resolve_env(env_flag, env_file, compose_content)
+    updated = dk.update_compose(compose_id, compose_content, env_content)
+    stored_len = len(updated.compose_file)
 
-    # Step 3: trigger deploy
+    if stored_len < 10:
+        timer.log(f"error: compose.update did not persist composeFile (got {stored_len} chars, sent {compose_len})")
+        sys.exit(1)
+
+    timer.log(f"Synced. {stored_len:,} chars persisted.")
+    if env_content is not None:
+        timer.log(f"Env: {len(updated.env):,} chars persisted.")
+
+    # Step 2: get app_name and pre-deploy container snapshot
+    compose_app = dk.get_compose(compose_id)
+    app_name = compose_app.app_name
+
+    pre_containers = dk.get_containers(app_name)
+    pre_deploy_ids: set[str] = {c.container_id for c in pre_containers}
+    pre_names = ", ".join(c.service for c in pre_containers) if pre_containers else "none"
+
+    # Step 3: snapshot previous deployment ID
+    prev_dep = dk.get_latest_deployment(compose_id)
+    prev_deploy_id = prev_dep.deployment_id if prev_dep else None
+
+    # Step 4: trigger deploy
     image_tag = os.environ.get("IMAGE_TAG", "")
     title = f"Deploy {image_tag}" if image_tag else "Deploy via dokploy-ctl"
 
     timer.log(f"Triggering deploy ({title})...")
-    deploy_resp = api_call(
-        client,
-        "POST",
-        "compose.deploy",
-        {
-            "composeId": compose_id,
-            "title": title,
-        },
-    )
-    if deploy_resp.is_error:
-        print_response(deploy_resp)
-        timer.summary("Deploy failed.")
-        sys.exit(1)
+    dk.trigger_deploy(compose_id, title)
 
-    # Step 4: poll for NEW deployment
-    max_attempts = timeout // 5
-    for i in range(1, max_attempts + 1):
-        time.sleep(5)
-        status_resp = api_call(client, "GET", "deployment.allByCompose", {"composeId": compose_id})
-        if status_resp.is_error:
-            status_resp = api_call(client, "GET", "deployment.all", {"composeId": compose_id})
+    timer.log(f"Snapshot: {len(pre_containers)} containers ({pre_names})")
 
-        if status_resp.is_error:
-            timer.log(f"Polling... [{i}/{max_attempts}] Failed to fetch status (HTTP {status_resp.status_code})")
+    # Step 5: smart poll loop — event-driven transitions
+    prev_containers = list(pre_containers)
+    prev_phase = ""
+    last_transition_time = timer.elapsed()
+    last_heartbeat_time = timer.elapsed()
+    last_stall_warning_time: float | None = None
+    transition_history: list[tuple[str, list[str]]] = []
+    deploy_status = "running"
+
+    max_cycles = timeout // POLL_INTERVAL
+    for _ in range(1, max_cycles + 1):
+        time.sleep(POLL_INTERVAL)
+
+        # Get current state
+        latest_dep = dk.get_latest_deployment(compose_id)
+        current_containers = dk.get_containers(app_name)
+        now = timer.elapsed()
+
+        # Skip if still waiting for new deployment to appear
+        if latest_dep and prev_deploy_id and latest_dep.deployment_id == prev_deploy_id:
+            if now - last_heartbeat_time >= HEARTBEAT_INTERVAL:
+                timer.log("(waiting for new deployment to appear...)")
+                last_heartbeat_time = now
             continue
 
-        deployments = status_resp.json()
-        if not deployments:
-            timer.log(f"Polling... [{i}/{max_attempts}] No deployments found")
-            continue
+        deploy_status = latest_dep.status if latest_dep else "unknown"
 
-        latest = deployments[0] if isinstance(deployments, list) else deployments
+        # Detect container transitions
+        transitions = detect_transitions(prev_containers, current_containers)
+        phase = detect_phase(pre_deploy_ids, current_containers)
 
-        if prev_deploy_id and latest.get("deploymentId") == prev_deploy_id:
-            timer.log(f"Polling... [{i}/{max_attempts}] Waiting for new deployment...")
-            continue
+        if transitions:
+            last_transition_time = now
+            last_heartbeat_time = now
+            last_stall_warning_time = None
+            stamp = timer.stamp()
+            for t in transitions:
+                transition_history.append((stamp, [t]))
+                timer.log(t)
 
-        dep_status = latest.get("status", "unknown")
-        timer.log(f"Polling... [{i}/{max_attempts}] status={dep_status}")
+        # Emit phase change
+        if phase != prev_phase:
+            if phase == "healthy":
+                healthy_count = len(current_containers)
+                timer.log(f"Phase: healthy. All {healthy_count} containers up.")
+            elif phase != "unknown" or prev_phase:
+                timer.log(f"deploy={deploy_status} | Phase: {phase}")
+            prev_phase = phase
 
-        if dep_status == "done":
-            timer.log("Dokploy reports deploy done.")
-            break
+        # Heartbeat if no recent output
+        if now - last_heartbeat_time >= HEARTBEAT_INTERVAL:
+            stalled = check_stall(last_transition_time, now, STALL_THRESHOLD)
+            if stalled:
+                if last_stall_warning_time is None:
+                    timer.log(f"WARNING: no container changes for {STALL_THRESHOLD}s. Deploy may be stalled.")
+                    timer.log(f"  Hint: dokploy-ctl logs {compose_id} -D    (check deploy build log)")
+                    last_stall_warning_time = now
+                else:
+                    timer.log(f"(no changes for {HEARTBEAT_INTERVAL}s — still stalled)")
+            else:
+                timer.log(f"(no changes for {HEARTBEAT_INTERVAL}s — still in {phase})")
+            last_heartbeat_time = now
 
-        if dep_status == "error":
-            error_msg = latest.get("errorMessage", "unknown error")
-            timer.log(f'Deploy failed: "{error_msg}"')
-            timer.log("")
+        # Error path
+        if deploy_status == "error":
+            error_msg = latest_dep.error_message if latest_dep else "unknown error"
+            timer.log(f'deploy=error | Deploy failed: "{error_msg}"')
+
+            if transition_history:
+                timer.log("")
+                timer.log("Container transitions before failure:")
+                for stamp, tlist in transition_history:
+                    for t in tlist:
+                        timer.log(f"  {stamp} {t}")
+                timer.log("")
 
             # Auto-fetch deploy log
-            log_path = latest.get("logPath", "")
+            log_path = latest_dep.log_path if latest_dep else ""
             if log_path:
                 timer.log("=== Deploy build log ===")
                 show_deploy_log(url, token, log_path)
                 timer.log("")
 
             # Auto-fetch container logs for problem containers
-            app_resp = api_call(client, "GET", "compose.one", {"composeId": compose_id})
             unhealthy_count = 0
-            if not app_resp.is_error:
-                app_name = app_resp.json().get("appName", "")
-                containers = get_containers(client, app_name)
-                if containers:
-                    show_problem_logs(url, token, containers, app_name)
-                    # Emit hints for each failed container
-                    for c in containers:
-                        state = c.get("state", "")
-                        status = c.get("status", "")
-                        if state in ("exited", "dead") and "Exited (0)" not in status:
-                            service = parse_service_name(c.get("name", "?"), app_name)
-                            # Parse exit code from status like "Exited (1) 30s ago"
-                            reason = "exited"
-                            m = re.search(r"Exited \((\d+)\)", status)
-                            if m:
-                                reason = f"exited({m.group(1)})"
-                            timer.log("")
-                            timer.log(hint_deploy_failed(compose_id, service, reason))
-                            unhealthy_count += 1
+            if current_containers:
+                raw_containers = [
+                    {"name": f"{app_name}-{c.service}-1", "state": c.state, "status": c.raw_status, "containerId": c.container_id}
+                    for c in current_containers
+                ]
+                show_problem_logs(url, token, raw_containers, app_name)
+                for c in current_containers:
+                    if c.state in ("exited", "dead") and "Exited (0)" not in c.raw_status:
+                        reason = "exited"
+                        m = re.search(r"Exited \((\d+)\)", c.raw_status)
+                        if m:
+                            reason = f"exited({m.group(1)})"
+                        timer.log("")
+                        timer.log(hint_deploy_failed(compose_id, c.service, reason))
+                        unhealthy_count += 1
 
             if unhealthy_count == 1:
                 timer.summary(f"Deploy failed. {unhealthy_count} unhealthy service.")
@@ -183,56 +232,21 @@ def deploy(compose_id: str, compose_file: str, env_file: str | None, env_flag: b
             else:
                 timer.summary("Deploy failed.")
             sys.exit(1)
-    else:
-        timer.log(f"Deploy timed out after {timeout}s")
-        timer.summary("Deploy failed.")
-        sys.exit(1)
 
-    # Step 5: verify container health
-    timer.log("Verifying container health...")
-    app_resp = api_call(client, "GET", "compose.one", {"composeId": compose_id})
-    if app_resp.is_error:
-        timer.log("warning: could not fetch app info for health check")
-        timer.summary("Deploy failed.")
-        sys.exit(1)
+        # Success path: healthy phase AND deploy done
+        if phase == "healthy" and deploy_status == "done":
+            timer.summary("All containers healthy. Deploy succeeded.")
+            return
 
-    app_name = app_resp.json().get("appName", "")
-    if not app_name:
-        timer.log("warning: no appName found, skipping health check")
-        timer.summary("Deploy succeeded.")
-        return
+        # Also accept: deploy done even if phase detection is uncertain (no containers = no health check)
+        if deploy_status == "done" and not current_containers:
+            timer.summary("Deploy succeeded.")
+            return
 
-    healthy = verify_container_health(client, app_name, timeout=120)
-    if healthy:
-        timer.summary("All containers healthy. Deploy succeeded.")
-    else:
-        timer.log("warning: Deploy done but not all containers healthy.")
-        containers = get_containers(client, app_name)
-        show_problem_logs(url, token, containers, app_name)
+        # If deploy says done but phase not yet healthy, keep polling briefly
+        prev_containers = current_containers
 
-        # Emit hints for unhealthy containers
-        unhealthy_count = 0
-        for c in containers:
-            state = c.get("state", "")
-            status = c.get("status", "")
-            if not _container_ok_simple(state, status):
-                service = parse_service_name(c.get("name", "?"), app_name)
-                timer.log(hint_unhealthy(compose_id, service))
-                unhealthy_count += 1
-
-        if unhealthy_count == 1:
-            timer.summary(f"Deploy failed. {unhealthy_count} unhealthy service.")
-        elif unhealthy_count > 1:
-            timer.summary(f"Deploy failed. {unhealthy_count} unhealthy services.")
-        else:
-            timer.summary("Deploy failed.")
-        sys.exit(1)
-
-
-def _container_ok_simple(state: str, status: str) -> bool:
-    """Simple health check without importing containers module internals."""
-    return (
-        (state == "exited" and "Exited (0)" in status)
-        or (state == "running" and "(healthy)" in status)
-        or (state == "running" and "(health:" not in status.lower() and "(unhealthy)" not in status.lower())
-    )
+    # Timeout
+    timer.log(f"Deploy timed out after {timeout}s")
+    timer.summary("Deploy failed.")
+    sys.exit(1)
