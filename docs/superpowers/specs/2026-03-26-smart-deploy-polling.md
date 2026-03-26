@@ -172,18 +172,31 @@ Each poll cycle makes 2 API calls (was 1):
 
 The second call is lightweight (GET, returns JSON array). At 6s intervals over a 5-minute deploy, that's ~50 extra API calls total.
 
+### Prerequisite: DokployClient Abstraction
+
+Before implementing smart polling, refactor the raw API layer into a typed `DokployClient` class. This:
+- Fixes the `find` bug (compose apps are under `environments[].compose`, not `project.compose`)
+- Centralizes auth, SSL, URL validation, error handling
+- Returns typed objects instead of raw dicts
+- Simplifies every command from `load_config() + make_client() + api_call() + .json() + .get()` to `client.get_compose(id)`
+
+The client lives in `src/dokploy_ctl/dokploy.py` (new file). Existing `client.py` is gradually replaced.
+
 ### Implementation Scope
 
-**Files to modify:**
-- `src/dokploy_ctl/deploy.py` — replace the poll loop with smart polling
-
 **Files to create:**
+- `src/dokploy_ctl/dokploy.py` — `DokployClient` with typed methods
 - `src/dokploy_ctl/polling.py` — `PollSnapshot`, transition detection, phase heuristics, stall detection
+- `tests/test_dokploy_client.py` — client abstraction tests
 - `tests/test_polling.py` — unit tests for transition detection and phase classification
 
-**Files unchanged:**
-- All other commands — only `deploy` uses this
-- `containers.py` — reuse `get_containers()` as-is
+**Files to modify:**
+- `src/dokploy_ctl/deploy.py` — use `DokployClient`, replace poll loop with smart polling
+- `src/dokploy_ctl/find_cmd.py` — use `DokployClient`, fix environments nesting bug
+- All other commands — migrate to `DokployClient` (can be incremental)
+
+**Files to remove (eventually):**
+- `src/dokploy_ctl/client.py` — replaced by `dokploy.py` (keep during migration, remove when all commands migrated)
 
 ### Configuration
 
