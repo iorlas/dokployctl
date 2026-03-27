@@ -2,13 +2,13 @@
 
 import click
 
-from dokploy_ctl.client import DOKPLOY_ID
+from dokploy_ctl.client import DOKPLOY_ID, DashSafeCommand
 from dokploy_ctl.dokploy import DokployClient
 from dokploy_ctl.timer import Timer
 from dokploy_ctl.websocket import fetch_container_logs, fetch_deploy_log
 
 
-@click.command(context_settings={"ignore_unknown_options": True})
+@click.command(cls=DashSafeCommand)
 @click.argument("compose_id", type=DOKPLOY_ID)
 @click.option("--service", "-s", default=None, help="Filter to a specific service name")
 @click.option("--tail", "-n", default=100, help="Number of lines (default: 100)")

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import click
 
-from dokploy_ctl.client import DOKPLOY_ID, api_call, load_config, make_client, print_response
+from dokploy_ctl.client import DOKPLOY_ID, DashSafeCommand, api_call, load_config, make_client, print_response
 from dokploy_ctl.containers import show_deploy_log, show_problem_logs
 from dokploy_ctl.dokploy import DokployClient
 from dokploy_ctl.env import resolve_env
@@ -118,7 +118,7 @@ def _do_sync(client, compose_id: str, compose_file: str, env_file: str | None, e
         timer.log(f"Env: {len(result.get('env', '')):,} chars persisted.")
 
 
-@click.command(context_settings={"ignore_unknown_options": True})
+@click.command(cls=DashSafeCommand)
 @click.argument("compose_id", type=DOKPLOY_ID)
 @click.argument("compose_file")
 @click.option("--env-file", "-e", default=None, help="Path to .env file")
@@ -131,7 +131,7 @@ def sync(compose_id: str, compose_file: str, env_file: str | None, env_flag: boo
     _do_sync(client, compose_id, compose_file, env_file, env_flag, timer)
 
 
-@click.command(context_settings={"ignore_unknown_options": True})
+@click.command(cls=DashSafeCommand)
 @click.argument("compose_id", type=DOKPLOY_ID)
 @click.argument("compose_file")
 @click.option("--env-file", "-e", default=None, help="Path to .env file")

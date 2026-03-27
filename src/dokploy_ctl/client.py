@@ -24,6 +24,51 @@ class DokployID(click.ParamType):
 DOKPLOY_ID = DokployID()
 
 
+_DASH_ID_PLACEHOLDER = "__DOKPLOY_DASH_ID__"
+
+
+class DashSafeCommand(click.Command):
+    """Command subclass that handles Dokploy IDs starting with '-'.
+
+    Click normally interprets '-Gxyz...' as a short option flag.
+    This detects dash-prefixed args that aren't known options,
+    swaps them with a placeholder for parsing, then restores the real value.
+    """
+
+    def _known_short_opts(self) -> set[str]:
+        opts: set[str] = set()
+        for param in self.params:
+            if isinstance(param, click.Option):
+                for o in param.opts + param.secondary_opts:
+                    if o.startswith("-") and not o.startswith("--"):
+                        opts.add(o)
+        return opts
+
+    def _is_dash_id(self, arg: str, known_short: set[str]) -> bool:
+        return arg.startswith("-") and not arg.startswith("--") and len(arg) > 2 and arg[:2] not in known_short
+
+    def parse_args(self, ctx: click.Context, args: list[str]) -> list[str]:
+        known_short = self._known_short_opts()
+        new_args = list(args)
+        original_value: str | None = None
+
+        for i, arg in enumerate(new_args):
+            if arg == "--":
+                break
+            if self._is_dash_id(arg, known_short):
+                original_value = arg
+                new_args[i] = _DASH_ID_PLACEHOLDER
+                break
+
+        result = super().parse_args(ctx, new_args)
+
+        if original_value is not None:
+            for key, val in ctx.params.items():
+                if val == _DASH_ID_PLACEHOLDER:
+                    ctx.params[key] = original_value
+        return result
+
+
 def load_config(config_dir: Path = DEFAULT_CONFIG_DIR) -> tuple[str, str]:
     """Return (base_url, token). Exit with clear error if missing."""
     token_path = config_dir / "token"

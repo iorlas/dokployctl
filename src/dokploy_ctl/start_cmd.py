@@ -4,7 +4,7 @@ import time
 
 import click
 
-from dokploy_ctl.client import DOKPLOY_ID
+from dokploy_ctl.client import DOKPLOY_ID, DashSafeCommand
 from dokploy_ctl.dokploy import ContainerInfo, DokployClient
 from dokploy_ctl.hints import hint_unhealthy
 from dokploy_ctl.timer import Timer
@@ -48,7 +48,7 @@ def _verify_health(client: DokployClient, app_name: str, timeout: int = 120) -> 
     return False
 
 
-@click.command(context_settings={"ignore_unknown_options": True})
+@click.command(cls=DashSafeCommand)
 @click.argument("compose_id", type=DOKPLOY_ID)
 def start(compose_id: str) -> None:
     """Start a stopped compose app and verify health."""

@@ -2,7 +2,7 @@
 
 import click
 
-from dokploy_ctl.client import DOKPLOY_ID
+from dokploy_ctl.client import DOKPLOY_ID, DashSafeCommand
 from dokploy_ctl.dokploy import ContainerInfo, DokployClient
 from dokploy_ctl.hints import hint_no_containers, hint_unhealthy
 from dokploy_ctl.timer import Timer
@@ -23,7 +23,7 @@ def _format_container_table(containers: list[ContainerInfo]) -> str:
     return "\n".join([header, *rows])
 
 
-@click.command(context_settings={"ignore_unknown_options": True})
+@click.command(cls=DashSafeCommand)
 @click.argument("compose_id", type=DOKPLOY_ID)
 @click.option("--live", "-l", is_flag=True, hidden=True, help="[deprecated] Containers are always shown now.")
 def status(compose_id: str, live: bool) -> None:

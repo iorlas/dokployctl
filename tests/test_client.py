@@ -1,4 +1,4 @@
-from dokploy_ctl.client import load_config, make_client
+from dokploy_ctl.client import DashSafeCommand, load_config, make_client
 
 
 def test_load_config_success(config_dir):
@@ -55,3 +55,36 @@ def test_make_client_default_verify(monkeypatch):
     monkeypatch.delenv("DOKPLOY_INSECURE", raising=False)
     client = make_client("https://example.com", "tok123")
     assert client.headers["x-api-key"] == "tok123"
+
+
+def test_dash_safe_command_inserts_separator():
+    """DashSafeCommand inserts '--' before dash-prefixed IDs so Click treats them as positional."""
+    import click
+    from click.testing import CliRunner
+
+    @click.command(cls=DashSafeCommand)
+    @click.argument("compose_id")
+    @click.option("--service", "-s", default=None)
+    @click.option("--tail", "-n", default=100)
+    def fake_cmd(compose_id, service, tail):
+        click.echo(f"id={compose_id} service={service} tail={tail}")
+
+    runner = CliRunner()
+
+    # Dash-prefixed ID with options after it
+    result = runner.invoke(fake_cmd, ["-G9RdFPM8_udm2a3squMY", "-s", "worker", "-n", "10"])
+    assert result.exit_code == 0, f"Failed:\n{result.output}"
+    assert "id=-G9RdFPM8_udm2a3squMY" in result.output
+    assert "service=worker" in result.output
+    assert "tail=10" in result.output
+
+    # Normal ID still works
+    result = runner.invoke(fake_cmd, ["normalId123", "-s", "web"])
+    assert result.exit_code == 0
+    assert "id=normalId123" in result.output
+
+    # Options before dash-prefixed ID
+    result = runner.invoke(fake_cmd, ["-s", "worker", "-G9RdFPM8_udm2a3squMY"])
+    assert result.exit_code == 0
+    assert "id=-G9RdFPM8_udm2a3squMY" in result.output
+    assert "service=worker" in result.output
