@@ -152,7 +152,7 @@ exclude_lines = [
 
 [dependency-groups]
 dev = [
-    "pytest>=8",
+    "pytest>=9.0.3",
     "pytest-cov>=6",
     "diff-cover>=9",
     "ruff>=0.9",
